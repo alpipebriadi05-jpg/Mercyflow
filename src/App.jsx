@@ -1,6 +1,5 @@
-import React from 'react';
-import { ArrowRight, Eye, Heart, ShieldCheck, Sparkles, Wallet, CheckCircle2, Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { ArrowRight, Eye, Heart, ShieldCheck, Sparkles, Wallet, CheckCircle2, Menu, X, LogIn, UserPlus } from 'lucide-react';
 
 const features = [
   { icon: Eye, title: 'Radical transparency', text: 'Every campaign is designed around clear information, traceable activity, and visible impact.' },
@@ -10,9 +9,17 @@ const features = [
 
 function App() {
   const [open, setOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState('signin');
 
   const scrollTo = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+    setOpen(false);
+  };
+
+  const showAuth = (mode) => {
+    setAuthMode(mode);
+    setAuthOpen(true);
     setOpen(false);
   };
 
@@ -28,6 +35,8 @@ function App() {
           <button onClick={() => scrollTo('mission')}>Mission</button>
           <button onClick={() => scrollTo('how')}>How it works</button>
           <button onClick={() => scrollTo('trust')}>Trust</button>
+          <button className="auth-link" onClick={() => showAuth('signin')}><LogIn size={15}/> Sign in</button>
+          <button className="nav-signup" onClick={() => showAuth('signup')}><UserPlus size={15}/> Sign up</button>
           <button className="nav-cta" onClick={() => scrollTo('start')}>Get involved <ArrowRight size={16}/></button>
         </nav>
 
@@ -54,13 +63,13 @@ function App() {
           <div className="hero-visual" aria-hidden="true">
             <div className="orbit orbit-a"></div><div className="orbit orbit-b"></div>
             <div className="impact-card">
-              <div className="card-top"><span>IMPACT FLOW</span><span className="live-dot">● LIVE</span></div>
-              <div className="impact-value">$24,680<span>+</span></div>
-              <div className="impact-label">Community impact tracked</div>
+              <div className="card-top"><span>IMPACT FLOW</span><span className="live-dot">● BUILDING</span></div>
+              <div className="impact-value impact-coming">Coming<span> soon</span></div>
+              <div className="impact-label">Transparent impact tracking</div>
               <div className="flow-line"><span></span><i></i><span></span><i></i><span></span></div>
               <div className="flow-labels"><span>Community</span><span>Mercyflow</span><span>Impact</span></div>
             </div>
-            <div className="floating-pill pill-one"><Heart size={15}/> 1,284 contributions</div>
+            <div className="floating-pill pill-one"><Heart size={15}/> Impact tracking coming soon</div>
             <div className="floating-pill pill-two"><ShieldCheck size={15}/> Transparent by design</div>
           </div>
         </section>
@@ -115,7 +124,7 @@ function App() {
               <h2>Be part of the flow.</h2>
               <p>We are building the foundation now. Join early, follow the progress, and help shape a more transparent future for giving.</p>
             </div>
-            <button className="primary light" onClick={() => window.location.href='mailto:hello@mercyflow.org'}>Connect with Mercyflow <ArrowRight size={18}/></button>
+            <button className="primary light" onClick={() => showAuth('signup')}>Create your account <ArrowRight size={18}/></button>
           </div>
         </section>
       </main>
@@ -125,6 +134,22 @@ function App() {
         <p>Give with clarity. Create lasting impact.</p>
         <span>© 2026 Mercyflow</span>
       </footer>
+
+      {authOpen && (
+        <div className="auth-overlay" role="dialog" aria-modal="true" aria-label={authMode === 'signin' ? 'Sign in' : 'Sign up'} onClick={() => setAuthOpen(false)}>
+          <div className="auth-modal" onClick={(event) => event.stopPropagation()}>
+            <button className="auth-close" aria-label="Close" onClick={() => setAuthOpen(false)}><X size={20}/></button>
+            <div className="auth-icon">{authMode === 'signin' ? <LogIn size={22}/> : <UserPlus size={22}/>}</div>
+            <div className="section-kicker">{authMode === 'signin' ? 'WELCOME BACK' : 'JOIN MERCYFLOW'}</div>
+            <h2>{authMode === 'signin' ? 'Sign in to Mercyflow' : 'Create your Mercyflow account'}</h2>
+            <p>Account authentication is being prepared for the next phase of Mercyflow.</p>
+            <button className="primary auth-action" onClick={() => setAuthOpen(false)}>Got it</button>
+            <button className="auth-switch" onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}>
+              {authMode === 'signin' ? 'Need an account? Sign up' : 'Already have an account? Sign in'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
