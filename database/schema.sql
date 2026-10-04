@@ -1,0 +1,2 @@
+-- Mercyflow database foundation
+-- Planned entities: users, wallets, campaigns, donations, transactions, beneficiaries.
