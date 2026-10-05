@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase.js';
+import { supabase, supabaseConfigError } from '../lib/supabase.js';
 import { ArrowRight, Eye, Heart, ShieldCheck, Sparkles, Wallet, CheckCircle2, Menu, X, LogIn, UserPlus } from 'lucide-react';
 
 const features = [
@@ -56,19 +56,19 @@ function App() {
     setAuthMessage('');
 
     if (!supabase) {
-      setAuthError('Authentication is temporarily unavailable. Please configure the Mercyflow Supabase environment variables in Vercel.');
+      setAuthError(supabaseConfigError || 'Authentication is temporarily unavailable. Please check the Mercyflow Supabase configuration in Vercel.');
       setAuthLoading(false);
       return;
     }
 
     try {
       if (authMode === 'signup') {
-        const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
+        const { data, error } = await supabase.auth.signUp({ email: email.trim(), password, options: { data: { full_name: fullName.trim() } } });
         if (error) throw error;
         if (data.session) { setUser(data.user); setAuthOpen(false); }
         else setAuthMessage('Account created. Check your email to confirm your account.');
       } else {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (error) throw error;
         setUser(data.user); setAuthOpen(false);
       }
