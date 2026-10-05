@@ -21,9 +21,22 @@ function App() {
   const [authLoading, setAuthLoading] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null));
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user ?? null));
-    return () => listener.subscription.unsubscribe();
+    if (!supabase) return;
+
+    let active = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (active) setUser(data.session?.user ?? null);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (active) setUser(session?.user ?? null);
+    });
+
+    return () => {
+      active = false;
+      listener?.subscription?.unsubscribe();
+    };
   }, []);
 
   const scrollTo = (id) => {
@@ -37,7 +50,17 @@ function App() {
   };
 
   const handleAuth = async (event) => {
-    event.preventDefault(); setAuthLoading(true); setAuthError(''); setAuthMessage('');
+    event.preventDefault();
+    setAuthLoading(true);
+    setAuthError('');
+    setAuthMessage('');
+
+    if (!supabase) {
+      setAuthError('Authentication is temporarily unavailable. Please configure the Mercyflow Supabase environment variables in Vercel.');
+      setAuthLoading(false);
+      return;
+    }
+
     try {
       if (authMode === 'signup') {
         const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
@@ -53,7 +76,14 @@ function App() {
     finally { setAuthLoading(false); }
   };
 
-  const handleLogout = async () => { await supabase.auth.signOut(); setUser(null); };
+  const handleLogout = async () => {
+    if (!supabase) {
+      setUser(null);
+      return;
+    }
+    await supabase.auth.signOut();
+    setUser(null);
+  };
 
   return (
     <div className="site-shell">
