@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase.js';
 import { ArrowRight, Eye, Heart, ShieldCheck, Sparkles, Wallet, CheckCircle2, Menu, X, LogIn, UserPlus } from 'lucide-react';
 
 const features = [
@@ -11,6 +12,19 @@ function App() {
   const [open, setOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState('signin');
+  const [user, setUser] = useState(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [authMessage, setAuthMessage] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user ?? null));
+    return () => listener.subscription.unsubscribe();
+  }, []);
 
   const scrollTo = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -18,10 +32,28 @@ function App() {
   };
 
   const showAuth = (mode) => {
-    setAuthMode(mode);
-    setAuthOpen(true);
-    setOpen(false);
+    setAuthMode(mode); setEmail(''); setPassword(''); setFullName(''); setAuthError(''); setAuthMessage('');
+    setAuthOpen(true); setOpen(false);
   };
+
+  const handleAuth = async (event) => {
+    event.preventDefault(); setAuthLoading(true); setAuthError(''); setAuthMessage('');
+    try {
+      if (authMode === 'signup') {
+        const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
+        if (error) throw error;
+        if (data.session) { setUser(data.user); setAuthOpen(false); }
+        else setAuthMessage('Account created. Check your email to confirm your account.');
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        setUser(data.user); setAuthOpen(false);
+      }
+    } catch (error) { setAuthError(error.message || 'Authentication failed. Please try again.'); }
+    finally { setAuthLoading(false); }
+  };
+
+  const handleLogout = async () => { await supabase.auth.signOut(); setUser(null); };
 
   return (
     <div className="site-shell">
@@ -35,8 +67,8 @@ function App() {
           <button onClick={() => scrollTo('mission')}>Mission</button>
           <button onClick={() => scrollTo('how')}>How it works</button>
           <button onClick={() => scrollTo('trust')}>Trust</button>
-          <button className="auth-link" onClick={() => showAuth('signin')}><LogIn size={15}/> Sign in</button>
-          <button className="nav-signup" onClick={() => showAuth('signup')}><UserPlus size={15}/> Sign up</button>
+          {user ? <button className="auth-link" onClick={handleLogout}><LogIn size={15}/> Sign out</button> : <><button className="auth-link" onClick={() => showAuth('signin')}><LogIn size={15}/> Sign in</button>
+          <button className="nav-signup" onClick={() => showAuth('signup')}><UserPlus size={15}/> Sign up</button></>}
           <button className="nav-cta" onClick={() => scrollTo('start')}>Get involved <ArrowRight size={16}/></button>
         </nav>
 
@@ -142,9 +174,16 @@ function App() {
             <div className="auth-icon">{authMode === 'signin' ? <LogIn size={22}/> : <UserPlus size={22}/>}</div>
             <div className="section-kicker">{authMode === 'signin' ? 'WELCOME BACK' : 'JOIN MERCYFLOW'}</div>
             <h2>{authMode === 'signin' ? 'Sign in to Mercyflow' : 'Create your Mercyflow account'}</h2>
-            <p>Account authentication is being prepared for the next phase of Mercyflow.</p>
-            <button className="primary auth-action" onClick={() => setAuthOpen(false)}>Got it</button>
-            <button className="auth-switch" onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}>
+            <p>{authMode === 'signin' ? 'Sign in to continue to your Mercyflow account.' : 'Create your account and join Mercyflow from day one.'}</p>
+            <form onSubmit={handleAuth}>
+              {authMode === 'signup' && <input className="auth-input" type="text" placeholder="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />}
+              <input className="auth-input" type="email" placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
+              <input className="auth-input" type="password" placeholder="Password (min. 6 characters)" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'} />
+              {authError && <div className="auth-error">{authError}</div>}
+              {authMessage && <div className="auth-message">{authMessage}</div>}
+              <button className="primary auth-action" type="submit" disabled={authLoading}>{authLoading ? 'Please wait…' : authMode === 'signin' ? 'Sign in' : 'Create account'}</button>
+            </form>
+            <button className="auth-switch" onClick={() => { setAuthMode(authMode === 'signin' ? 'signup' : 'signin'); setAuthError(''); setAuthMessage(''); }}>
               {authMode === 'signin' ? 'Need an account? Sign up' : 'Already have an account? Sign in'}
             </button>
           </div>
