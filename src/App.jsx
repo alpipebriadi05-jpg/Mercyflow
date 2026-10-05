@@ -15,7 +15,9 @@ function App() {
   const [user, setUser] = useState(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [resetMode, setResetMode] = useState(false);
   const [authError, setAuthError] = useState('');
   const [authMessage, setAuthMessage] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
@@ -45,7 +47,7 @@ function App() {
   };
 
   const showAuth = (mode) => {
-    setAuthMode(mode); setEmail(''); setPassword(''); setFullName(''); setAuthError(''); setAuthMessage('');
+    setAuthMode(mode); setEmail(''); setPassword(''); setConfirmPassword(''); setFullName(''); setAuthError(''); setAuthMessage(''); setResetMode(false);
     setAuthOpen(true); setOpen(false);
   };
 
@@ -55,6 +57,22 @@ function App() {
     setAuthError('');
     setAuthMessage('');
 
+    if (resetMode) {
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${window.location.origin}/` });
+        if (error) throw error;
+        setAuthMessage('Password reset email sent. Check your inbox and follow the secure link.');
+      } catch (error) { setAuthError(error.message || 'Unable to send the reset email. Please try again.'); }
+      finally { setAuthLoading(false); }
+      return;
+    }
+
+    if (authMode === 'signup' && password !== confirmPassword) {
+      setAuthError('Passwords do not match.');
+      setAuthLoading(false);
+      return;
+    }
+
     if (!supabase) {
       setAuthError(supabaseConfigError || 'Authentication is temporarily unavailable. Please check the Mercyflow Supabase configuration in Vercel.');
       setAuthLoading(false);
@@ -63,6 +81,7 @@ function App() {
 
     try {
       if (authMode === 'signup') {
+        if (password.length < 8) throw new Error('Password must be at least 8 characters.');
         const { data, error } = await supabase.auth.signUp({ email: email.trim(), password, options: { data: { full_name: fullName.trim() } } });
         if (error) throw error;
         if (data.session) { setUser(data.user); setAuthOpen(false); }
@@ -202,19 +221,21 @@ function App() {
           <div className="auth-modal" onClick={(event) => event.stopPropagation()}>
             <button className="auth-close" aria-label="Close" onClick={() => setAuthOpen(false)}><X size={20}/></button>
             <div className="auth-icon">{authMode === 'signin' ? <LogIn size={22}/> : <UserPlus size={22}/>}</div>
-            <div className="section-kicker">{authMode === 'signin' ? 'WELCOME BACK' : 'JOIN MERCYFLOW'}</div>
-            <h2>{authMode === 'signin' ? 'Sign in to Mercyflow' : 'Create your Mercyflow account'}</h2>
-            <p>{authMode === 'signin' ? 'Sign in to continue to your Mercyflow account.' : 'Create your account and join Mercyflow from day one.'}</p>
+            <div className="section-kicker">{resetMode ? 'ACCOUNT RECOVERY' : authMode === 'signin' ? 'WELCOME BACK' : 'JOIN MERCYFLOW'}</div>
+            <h2>{resetMode ? 'Reset your password' : authMode === 'signin' ? 'Sign in to Mercyflow' : 'Create your Mercyflow account'}</h2>
+            <p>{resetMode ? 'Enter your email and we will send a secure password reset link.' : authMode === 'signin' ? 'Sign in to continue to your Mercyflow account.' : 'Create your account and join Mercyflow from day one.'}</p>
             <form onSubmit={handleAuth}>
-              {authMode === 'signup' && <input className="auth-input" type="text" placeholder="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />}
+              {!resetMode && authMode === 'signup' && <input className="auth-input" type="text" placeholder="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />}
               <input className="auth-input" type="email" placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
-              <input className="auth-input" type="password" placeholder="Password (min. 6 characters)" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'} />
+              {!resetMode && <input className="auth-input" type="password" placeholder="Password (min. 8 characters)" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'} />}
+              {!resetMode && authMode === 'signup' && <input className="auth-input" type="password" placeholder="Confirm password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} minLength={8} required autoComplete="new-password" />}
               {authError && <div className="auth-error">{authError}</div>}
               {authMessage && <div className="auth-message">{authMessage}</div>}
-              <button className="primary auth-action" type="submit" disabled={authLoading}>{authLoading ? 'Please wait…' : authMode === 'signin' ? 'Sign in' : 'Create account'}</button>
+              <button className="primary auth-action" type="submit" disabled={authLoading}>{authLoading ? 'Please wait…' : resetMode ? 'Send reset link' : authMode === 'signin' ? 'Sign in' : 'Create account'}</button>
             </form>
-            <button className="auth-switch" onClick={() => { setAuthMode(authMode === 'signin' ? 'signup' : 'signin'); setAuthError(''); setAuthMessage(''); }}>
-              {authMode === 'signin' ? 'Need an account? Sign up' : 'Already have an account? Sign in'}
+            {!resetMode && authMode === 'signin' && <button className="auth-switch" onClick={() => { setResetMode(true); setAuthError(''); setAuthMessage(''); }}>{'Forgot your password?'}</button>}
+            <button className="auth-switch" onClick={() => { setResetMode(false); setAuthMode(authMode === 'signin' ? 'signup' : 'signin'); setAuthError(''); setAuthMessage(''); }}>
+              {resetMode ? 'Back to sign in' : authMode === 'signin' ? 'Need an account? Sign up' : 'Already have an account? Sign in'}
             </button>
           </div>
         </div>
