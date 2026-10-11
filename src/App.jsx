@@ -57,6 +57,12 @@ function App() {
     setAuthError('');
     setAuthMessage('');
 
+    if (!supabase) {
+      setAuthError(supabaseConfigError || 'Authentication is temporarily unavailable. Please check the Mercyflow Supabase configuration in Vercel.');
+      setAuthLoading(false);
+      return;
+    }
+
     if (resetMode) {
       try {
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${window.location.origin}/` });
@@ -69,12 +75,6 @@ function App() {
 
     if (authMode === 'signup' && password !== confirmPassword) {
       setAuthError('Passwords do not match.');
-      setAuthLoading(false);
-      return;
-    }
-
-    if (!supabase) {
-      setAuthError(supabaseConfigError || 'Authentication is temporarily unavailable. Please check the Mercyflow Supabase configuration in Vercel.');
       setAuthLoading(false);
       return;
     }
